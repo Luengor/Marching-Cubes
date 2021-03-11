@@ -293,11 +293,12 @@ def generateMeshFromNoise(noise:list, surface:int = 0):
     m.generate_normals()
     return m
 
-def getNoiseGrid(shape:tuple=(1, 1, 1), s:int=.5, seed:int=None):
+def getNoiseGrid(shape:tuple=(1, 1, 1), offset:tuple=(0, 0, 0), s:int=.5, seed:int=None):
     '''
     Generates a noise grid
     shape: A tuple with the shape of the noise
-    s: The scale of the noise. Default is .5 (I recomend values lower than 1)
+    offset: The position of the noise in the space
+    s: The scale of the noise. Default is .5
     seed: The random seed for the noise. Default is a random int between -65536 and 65536
     '''
     
@@ -307,8 +308,8 @@ def getNoiseGrid(shape:tuple=(1, 1, 1), s:int=.5, seed:int=None):
         print('seed: %s' % seed)
     tmp = OpenSimplex(seed)
 
-    return [[[tmp.noise3d(x*s + 0.2, y*s + 0.2, z*s + 0.2) for z in range(shape[0])] 
-        for y in range(shape[2])] for x in range(shape[1])]
+    return [[[tmp.noise3d(x*s + 0.2 + offset[0], y*s + 0.2 + offset[1], z*s + 0.2 + offset[2])
+        for z in range(shape[0])] for y in range(shape[2])] for x in range(shape[1])]
 
 def add2Mesh(vertices, triangles, newVertices, newTriangles):
     '''
