@@ -1,4 +1,4 @@
-import random
+import random, time
 from ursina import Mesh, Vec3
 from opensimplex import OpenSimplex
 
@@ -286,16 +286,17 @@ def generateMeshFromNoise(noise:list, surface:int = 0):
                 newTriangles = getTriangles(i)
                 
                 if newTriangles == None: continue
-                newVertices = mapSegmentPoints(tuple(x - x0 for x, x0 in zip((x, y, z), offset)))
-                vertices, triangles = add2Mesh(vertices, triangles, newVertices, newTriangles)
+                triangles.append(newTriangles)
+                vertices.append(mapSegmentPoints(tuple(x - x0 for x, x0 in zip((x, y, z), offset))))
     
+    vertices, triangles = mergeMeshes(vertices, triangles)
     m = Mesh(vertices=vertices, triangles=triangles)
     m.generate_normals()
     return m
 
 def getNoiseGrid(shape:tuple=(1, 1, 1), offset:tuple=(0, 0, 0), s:int=.5, seed:int=None):
     '''
-    Generates a noise grid
+    Generates a noise grid.
     shape: A tuple with the shape of the noise
     offset: The position of the noise in the space
     s: The scale of the noise. Default is .5
@@ -305,33 +306,28 @@ def getNoiseGrid(shape:tuple=(1, 1, 1), offset:tuple=(0, 0, 0), s:int=.5, seed:i
     if len(shape) < 3: return []
     if seed == None: 
         seed = random.randint(-65536, 65536)
-        print('seed: %s' % seed)
+        print('seed: {}'.format(seed))
     tmp = OpenSimplex(seed)
 
     return [[[tmp.noise3d(x*s + 0.2 + offset[0], y*s + 0.2 + offset[1], z*s + 0.2 + offset[2])
         for z in range(shape[0])] for y in range(shape[2])] for x in range(shape[1])]
 
-def add2Mesh(vertices, triangles, newVertices, newTriangles):
-    '''
-    Combines the given vertices and triangles into a single mesh removing the duplicates
-    '''
+def mergeMeshes(verticess, triangless):
+    newVertices, newTriangles = [], []
+    for vertices, triangles in zip(verticess, triangless):
+        for triangle in triangles:
+            for x in range(3):
+                vertex = vertices[triangle[x]]
+                try:
+                    triangle[x] = newVertices.index(vertex)
+                except ValueError:  # The index function returns a ValueError exception when not found
+                    newVertices.append(vertex)
+                    triangle[x] = len(newVertices) - 1
+            # print(len(newVertices))
+            newTriangles.append(triangle)
     
-    # Creating the abs triangles
-    absTriangles = []
-    for triangle in newTriangles:
-        absTriangle = []
-        for c in triangle:
-            absTriangle.append(newVertices[c])
-        absTriangles.append(absTriangle)    
-    
-    # Combine and de-abs
-    for vertex in newVertices:
-        if not vertex in vertices: vertices.append(vertex)
+    return newVertices, newTriangles
 
-    for absTriangle in absTriangles:
-        triangles.append([vertices.index(v) for v in absTriangle])
-    
-    return vertices, triangles
 
 def mapSegmentPoints(vertex:tuple = (0, 0, 0), size:float = 1):
     '''
